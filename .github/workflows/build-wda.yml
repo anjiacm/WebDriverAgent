@@ -27,7 +27,7 @@ jobs:
           MOBILEPROVISION_BASE64: ${{ secrets.MOBILEPROVISION_BASE64 }}
         run: |
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "$MOBILEPROVISION_BASE64" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/wda.mobileprovision
+          echo "$MOBILEPROVISION_BASE64" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/c896bc27-ac17-484d-9b2c-73f0d2d554ac.mobileprovision
 
       - name: Bootstrap WDA
         run: |
@@ -40,9 +40,13 @@ jobs:
             -scheme WebDriverAgentRunner \
             -destination "generic/platform=iOS" \
             -derivedDataPath /tmp/wda-build \
-            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_STYLE=Manual \
             DEVELOPMENT_TEAM=34AG2D92DC \
-            2>&1 | grep -E "error:|warning:|BUILD|SIGN|\.app" | tail -30
+            CODE_SIGN_IDENTITY="iPhone Developer" \
+            PROVISIONING_PROFILE="c896bc27-ac17-484d-9b2c-73f0d2d554ac" \
+            PROVISIONING_PROFILE_SPECIFIER="wuguangan-iPhonex" \
+            WEBDRIVERAGENTLIB_CODE_SIGN_STYLE=Automatic \
+            2>&1 | grep -E "error:|BUILD|SIGN|Provisioning" | tail -30
 
       - name: Package IPA
         run: |
