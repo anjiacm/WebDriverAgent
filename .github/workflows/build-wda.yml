@@ -48,7 +48,10 @@ jobs:
 
       - name: Package IPA
         run: |
-          APP_PATH=$(find /tmp/wda-build -name "WebDriverAgentRunner-Runner.app" | head -1)
+          echo "=== Build output ==="
+          find /tmp/wda-build -name "*.app" 2>/dev/null
+          APP_PATH=$(find /tmp/wda-build -name "*.app" -not -path "*/Plugins/*" | head -1)
+          echo "Using: $APP_PATH"
           mkdir -p /tmp/ipa/Payload
           cp -r "$APP_PATH" /tmp/ipa/Payload/
           cd /tmp/ipa && zip -r /tmp/WebDriverAgent.ipa Payload/
