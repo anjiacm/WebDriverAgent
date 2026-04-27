@@ -33,21 +33,33 @@ jobs:
         run: |
           cd Scripts && bash bootstrap.sh -d 2>&1 | tail -20
 
-      - name: Patch project signing
+      - name: Patch project signing per-target
         run: |
-          python3 - <<'PYEOF'
-          import re, sys
-          path = "WebDriverAgent.xcodeproj/project.pbxproj"
-          content = open(path).read()
-          # Force WebDriverAgentLib to use Automatic signing (no profile needed)
-          content = re.sub(
-            r'(WebDriverAgentLib[^}]*?)(CODE_SIGN_STYLE\s*=\s*\w+;)',
-            r'\1CODE_SIGN_STYLE = Automatic;',
-            content, flags=re.DOTALL
-          )
-          open(path, 'w').write(content)
-          print("Patched project.pbxproj")
-          PYEOF
+          gem install xcodeproj --quiet
+          ruby - <<'RUBYEOF'
+          require 'xcodeproj'
+          project = Xcodeproj::Project.open('WebDriverAgent.xcodeproj')
+
+          project.targets.each do |target|
+            target.build_configurations.each do |config|
+              if target.name == 'WebDriverAgentRunner'
+                config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
+                config.build_settings['CODE_SIGN_IDENTITY'] = 'iPhone Developer'
+                config.build_settings['PROVISIONING_PROFILE'] = 'c896bc27-ac17-484d-9b2c-73f0d2d554ac'
+                config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = 'wuguangan-iPhonex'
+                config.build_settings['DEVELOPMENT_TEAM'] = '34AG2D92DC'
+              else
+                config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
+                config.build_settings.delete('PROVISIONING_PROFILE')
+                config.build_settings.delete('PROVISIONING_PROFILE_SPECIFIER')
+                config.build_settings['DEVELOPMENT_TEAM'] = '34AG2D92DC'
+              end
+            end
+          end
+
+          project.save
+          puts "Patched #{project.targets.count} targets"
+          RUBYEOF
 
       - name: Build WDA IPA
         run: |
@@ -56,12 +68,7 @@ jobs:
             -scheme WebDriverAgentRunner \
             -destination "generic/platform=iOS" \
             -derivedDataPath /tmp/wda-build \
-            DEVELOPMENT_TEAM=34AG2D92DC \
-            CODE_SIGN_IDENTITY="iPhone Developer" \
-            CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE="c896bc27-ac17-484d-9b2c-73f0d2d554ac" \
-            PROVISIONING_PROFILE_SPECIFIER="wuguangan-iPhonex" \
-            2>&1 | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED|Signing" | tail -20
+            2>&1 | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED|Signing|codesign" | tail -20
 
       - name: Package IPA
         run: |
