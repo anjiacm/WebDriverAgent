@@ -33,6 +33,22 @@ jobs:
         run: |
           cd Scripts && bash bootstrap.sh -d 2>&1 | tail -20
 
+      - name: Patch project signing
+        run: |
+          python3 - <<'PYEOF'
+          import re, sys
+          path = "WebDriverAgent.xcodeproj/project.pbxproj"
+          content = open(path).read()
+          # Force WebDriverAgentLib to use Automatic signing (no profile needed)
+          content = re.sub(
+            r'(WebDriverAgentLib[^}]*?)(CODE_SIGN_STYLE\s*=\s*\w+;)',
+            r'\1CODE_SIGN_STYLE = Automatic;',
+            content, flags=re.DOTALL
+          )
+          open(path, 'w').write(content)
+          print("Patched project.pbxproj")
+          PYEOF
+
       - name: Build WDA IPA
         run: |
           xcodebuild build-for-testing \
@@ -40,13 +56,12 @@ jobs:
             -scheme WebDriverAgentRunner \
             -destination "generic/platform=iOS" \
             -derivedDataPath /tmp/wda-build \
-            CODE_SIGN_STYLE=Manual \
             DEVELOPMENT_TEAM=34AG2D92DC \
             CODE_SIGN_IDENTITY="iPhone Developer" \
+            CODE_SIGN_STYLE=Manual \
             PROVISIONING_PROFILE="c896bc27-ac17-484d-9b2c-73f0d2d554ac" \
             PROVISIONING_PROFILE_SPECIFIER="wuguangan-iPhonex" \
-            WEBDRIVERAGENTLIB_CODE_SIGN_STYLE=Automatic \
-            2>&1 | grep -E "error:|BUILD|SIGN|Provisioning" | tail -30
+            2>&1 | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED|Signing" | tail -20
 
       - name: Package IPA
         run: |
